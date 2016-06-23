@@ -460,6 +460,8 @@ function openidc.authenticate(opts, target_url)
   local session = require("resty.session").open()
 
   local target_url = target_url or ngx.var.request_uri
+
+  ngx.log(ngx.STDERR, "authenticate call to "..target_url);
   
   if type(opts.discovery) == "string" then
     --if session.data.discovery then
@@ -479,21 +481,27 @@ function openidc.authenticate(opts, target_url)
   -- see if this is a request to the redirect_uri i.e. an authorization response
   local path = target_url:match("(.-)%?") or target_url
   if path == opts.redirect_uri_path then
+    ngx.log(ngx.STDERR, "got authorization response");
     return openidc_authorization_response(opts, session)
   end
 
   -- see if this is a request to logout
   if path == (opts.logout_path and opts.logout_path or "/logout") then
+    ngx.log(ngx.STDERR, "got logout request");
     return openidc_logout(opts, session)
   end
 
   -- if we have no id_token then redirect to the OP for authentication
   if not session.data.id_token then
+    ngx.log(ngx.STDERR, "no session id_token");
     return openidc_authorize(opts, session, target_url)
   end
 
   -- log id_token contents
+  ngx.log(ngx.STDERR, "id_token=", cjson.encode(session.data.id_token));
   ngx.log(ngx.DEBUG, "id_token=", cjson.encode(session.data.id_token))
+
+  ngx.log(ngx.STDERR, "everything looks good");
 
   -- return the id_token to the caller Lua script for access control purposes
   return
